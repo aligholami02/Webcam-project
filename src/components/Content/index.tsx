@@ -126,12 +126,14 @@ const Content = () => {
                 onChange={(e) =>
                   setForm({ ...form, telegram_id: e.target.value })
                 }
+                value={form.telegram_id}
               />
             </Form.Item>
             <input
               type="text"
               placeholder="Name"
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              value={form.name}
             />
             <Form.Item>
               <button type="submit" id="login-button">
