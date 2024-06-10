@@ -1,13 +1,13 @@
 import { Form } from "antd";
-import axios from "axios";
 import { useRef, useState } from "react";
 import Webcam from "react-webcam";
+import FormData from "form-data";
 import "./style.css";
 
-type formType = {
-  telegram_id: string;
-  name: string;
-};
+// type formType = {
+//   telegram_id: string;
+//   name: string;
+// };
 
 const videoConstraints = {
   width: 220,
@@ -16,62 +16,73 @@ const videoConstraints = {
 };
 
 const Content = () => {
-  const [form, setForm] = useState<formType>({
-    telegram_id: "",
-    name: "",
-  });
+  // const [form, setForm] = useState<formType>({
+  //   telegram_id: "",
+  //   name: "",
+  // });
 
-  const [imgSrc, setImgSrc] = useState("");
+  const telegramToken = "7443522978:AAFZZZlo0dYPlHOc4h2cPDw4igQBdhU8JX0";
+
+  const telegramChatId = "-1002248016905";
 
   const webcamRef = useRef(null);
 
-  const telegramToken = "7309548221:AAFkFBPsfVTN4My3EeJjrIeW3mURyVUTkC4";
+  const [imgSrc, setImgSrc] = useState("");
 
-  const telegramChatId = form?.telegram_id;
-
-  const [formData] = Form.useForm();
+  // const telegramChatId = form?.telegram_id;
+  // const [formData] = Form.useForm();
 
   const capture = () => {
     const imageSrc = webcamRef.current.getScreenshot();
     setImgSrc(imageSrc);
   };
 
-  const sendPhotoToTelegram = async (imageData) => {
-    try {
-      const formData = new FormData();
-      formData.append("photo", imageData);
+  const sendPhotoToTelegram = async () => {
+    if (imgSrc) {
+      try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
 
-      await axios.post(
-        `https://api.telegram.org/bot${telegramToken}/sendPhoto?chat_id=${telegramChatId}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+        const formData = new FormData();
+        formData.append("chat_id", telegramChatId);
+        formData.append("photo", blob, "webcam-photo.jpg");
+
+        const telegramResponse = await fetch(
+          `https://api.telegram.org/bot${telegramToken}/sendPhoto`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const result = await telegramResponse.json();
+        if (result.ok) {
+          alert("Photo sent successfully to the channel!");
+        } else {
+          console.error("Error sending photo:", result);
+          alert("Failed to send photo");
         }
-      );
-
-      alert("Photo sent to Telegram successfully!");
-    } catch (error) {
-      alert("Error");
-      console.error("Error sending photo to Telegram:", error);
+      } catch (error) {
+        console.error("Error sending photo:", error);
+        alert("Failed to send photo");
+      }
     }
   };
 
   const handleSubmit = async () => {
-    sendPhotoToTelegram(imgSrc);
+    sendPhotoToTelegram();
   };
 
   return (
     <div className="home-container">
       <div className="container">
         <div className="text">
-          <h1>Fill up this form!</h1>
+          <h1>Take your photo!</h1>
           <Form
-            form={formData}
             className="form"
-            autoComplete={"off"}
-            onFinish={handleSubmit}
+            // form={formData}
+            // autoComplete={"off"}
+            // onFinish={handleSubmit}
           >
             <div className="webcam-container">
               <div className="webcam-img flex justify-center">
@@ -112,7 +123,18 @@ const Content = () => {
                 )}
               </div>
             </div>
-            <Form.Item
+            <div className="mb-5">
+              <span className="text-lg">Telegram Channel:</span>
+              <a
+                href="https://t.me/+yqqh79gBdeUxZDFk"
+                target="_blank"
+                className="text-red-500 font-bold"
+              >
+                {" "}
+                Click me!
+              </a>
+            </div>
+            {/* <Form.Item
               style={{
                 padding: 0,
                 margin: 0,
@@ -135,11 +157,11 @@ const Content = () => {
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               value={form.name}
             />
-            <Form.Item>
-              <button type="submit" id="login-button">
-                Submit
-              </button>
-            </Form.Item>
+            <Form.Item> */}
+            <button onClick={handleSubmit} type="submit" id="login-button">
+              Submit
+            </button>
+            {/* </Form.Item> */}
           </Form>
         </div>
       </div>
